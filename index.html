@@ -2,7 +2,9 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>像素绘图 · MVP</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -68,7 +70,8 @@
           按住 <kbd>Shift</kbd> 拖动 = 矩形批量；<br>
           切到 ✋ 拖动整张画布定位；<br>
           按住 <kbd>Space</kbd> 拖动 = 平移视图；<br>
-          滚轮 = 缩放 (10%~300%)。
+          滚轮 = 缩放 (10%~300%)；<br>
+          <span class="hint-touch">移动端：双指捏合缩放 + 平移。</span>
         </p>
       </section>
     </aside>

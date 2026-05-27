@@ -257,6 +257,15 @@ kbd {
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   display: block;
   cursor: crosshair;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.workspace {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 .canvas-tile.active {
   border: 2px solid #1e88e5;
@@ -274,4 +283,112 @@ kbd {
 #btn-zoom-reset {
   min-width: 56px;
   font-variant-numeric: tabular-nums;
+}
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 768px) {
+  body { overflow: hidden; }
+
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .topbar .group { gap: 4px; }
+  .topbar button { padding: 5px 8px; font-size: 13px; }
+  .topbar label { font-size: 12px; }
+  .topbar select { padding: 3px 4px; font-size: 12px; }
+  .topbar .spacer { margin-left: auto; }
+  .counter { font-size: 11px; white-space: nowrap; }
+
+  .layout { flex-direction: column; }
+
+  .sidebar {
+    width: 100%;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 10px 12px;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .sidebar > section { flex-shrink: 0; }
+  .sidebar h3 {
+    margin: 0 0 6px;
+    font-size: 10px;
+  }
+
+  .palette-grid {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 0;
+  }
+  .palette-item {
+    width: 42px;
+    height: 42px;
+    aspect-ratio: auto;
+    flex-shrink: 0;
+    font-size: 22px;
+  }
+  .palette-item .count {
+    bottom: -4px;
+    right: -4px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    font-size: 9px;
+    line-height: 16px;
+  }
+
+  .btn-block-add {
+    width: auto;
+    padding: 6px 10px;
+    margin-left: 4px;
+    font-size: 12px;
+  }
+
+  .block-form {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+    z-index: 100;
+    background: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.16);
+  }
+
+  .tool-group { flex-direction: row; gap: 6px; }
+  .tool-btn {
+    text-align: center;
+    padding: 8px 10px;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  .hint { display: none; }
+
+  .workspace {
+    padding: 0;
+    overscroll-behavior: none;
+  }
+
+  /* 顶栏太挤时让缩放按钮变窄 */
+  #btn-zoom-reset { min-width: 48px; padding: 4px 4px; font-size: 12px; }
+  #btn-zoom-in, #btn-zoom-out { padding: 4px 8px; }
+}
+
+@media (min-width: 769px) {
+  .hint-touch { display: none; }
+}
+
+/* 触摸设备额外提示 */
+@media (hover: none) and (pointer: coarse) {
+  .palette-item:hover { transform: none; }
+  .palette-item .del { display: block; opacity: 0.5; }
 }

@@ -56,6 +56,8 @@
   let zoom = 1.0;
   let spaceDown = false;
   let panning = null;
+  const activePointers = new Map();
+  let gesture = null;
 
   // ===== 持久化 =====
   function loadPalette() {
@@ -290,14 +292,55 @@
   let preDragSnapshot = null;
   let dirty = false;
 
-  workspace.addEventListener("mousedown", (e) => {
-    if (e.button !== 0) return;
+  function rollbackCurrentDrag() {
+    if (!state.drag) return;
+    if (preDragSnapshot) {
+      state.canvases = JSON.parse(JSON.stringify(preDragSnapshot.canvases));
+      if (!state.canvases.find(c => c.id === state.activeCanvasId)) {
+        state.activeCanvasId = state.canvases[0]?.id || null;
+      }
+      syncCanvasNodes();
+      for (const c of state.canvases) renderCanvasTile(c);
+    }
+    state.drag = null;
+    preDragSnapshot = null;
+    dirty = false;
+  }
 
-    if (spaceDown) {
+  workspace.addEventListener("pointerdown", (e) => {
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // 第二根手指（仅触摸）→ 双指手势：缩放 + 平移
+    if (activePointers.size >= 2 && e.pointerType === "touch") {
       e.preventDefault();
+      rollbackCurrentDrag();
+      if (panning) {
+        panning = null;
+        workspace.classList.remove("panning-active");
+      }
+      const ps = [...activePointers.values()].slice(0, 2);
+      gesture = {
+        startCenterX: (ps[0].x + ps[1].x) / 2,
+        startCenterY: (ps[0].y + ps[1].y) / 2,
+        startDist: Math.max(1, Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y)),
+        startZoom: zoom,
+        startScrollX: workspace.scrollLeft,
+        startScrollY: workspace.scrollTop,
+      };
+      return;
+    }
+
+    // 仅鼠标主键 / 触摸 / 笔
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+
+    // Space + 鼠标 = 平移视图
+    if (spaceDown && e.pointerType === "mouse") {
+      e.preventDefault();
+      try { workspace.setPointerCapture(e.pointerId); } catch (_) {}
       panning = {
         startX: e.clientX, startY: e.clientY,
         scrollX: workspace.scrollLeft, scrollY: workspace.scrollTop,
+        pointerId: e.pointerId,
       };
       workspace.classList.add("panning-active");
       return;
@@ -306,6 +349,7 @@
     const c = getCanvasFromEvent(e);
     if (!c) return;
     e.preventDefault();
+    try { workspace.setPointerCapture(e.pointerId); } catch (_) {}
 
     if (state.activeCanvasId !== c.id) {
       state.activeCanvasId = c.id;
@@ -345,7 +389,31 @@
     renderCanvasTile(c);
   });
 
-  window.addEventListener("mousemove", (e) => {
+  workspace.addEventListener("pointermove", (e) => {
+    if (activePointers.has(e.pointerId)) {
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // 双指手势：缩放 + 平移
+    if (gesture && activePointers.size >= 2 && e.pointerType === "touch") {
+      e.preventDefault();
+      const ps = [...activePointers.values()].slice(0, 2);
+      const centerX = (ps[0].x + ps[1].x) / 2;
+      const centerY = (ps[0].y + ps[1].y) / 2;
+      const dist = Math.max(1, Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y));
+      const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, +(gesture.startZoom * (dist / gesture.startDist)).toFixed(3)));
+      const wsRect = workspace.getBoundingClientRect();
+      const areaX = (gesture.startCenterX - wsRect.left + gesture.startScrollX) / gesture.startZoom;
+      const areaY = (gesture.startCenterY - wsRect.top + gesture.startScrollY) / gesture.startZoom;
+      if (newZoom !== zoom) {
+        zoom = newZoom;
+        syncCanvasNodes();
+      }
+      workspace.scrollLeft = Math.max(0, areaX * newZoom - (centerX - wsRect.left));
+      workspace.scrollTop = Math.max(0, areaY * newZoom - (centerY - wsRect.top));
+      return;
+    }
+
     if (panning) {
       workspace.scrollLeft = panning.scrollX - (e.clientX - panning.startX);
       workspace.scrollTop = panning.scrollY - (e.clientY - panning.startY);
@@ -384,8 +452,19 @@
     renderCanvasTile(c);
   });
 
-  window.addEventListener("mouseup", () => {
-    if (panning) {
+  workspace.addEventListener("pointerup", (e) => {
+    activePointers.delete(e.pointerId);
+    try { workspace.releasePointerCapture(e.pointerId); } catch (_) {}
+
+    if (gesture && activePointers.size < 2) {
+      gesture = null;
+      if (activePointers.size === 1) {
+        activePointers.clear();
+      }
+      return;
+    }
+
+    if (panning && (panning.pointerId === undefined || panning.pointerId === e.pointerId)) {
       panning = null;
       workspace.classList.remove("panning-active");
       return;
@@ -420,6 +499,21 @@
     renderCanvasTile(c);
     updateCounters();
     renderPalette();
+  });
+
+  workspace.addEventListener("pointercancel", (e) => {
+    activePointers.delete(e.pointerId);
+    try { workspace.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (activePointers.size === 0) gesture = null;
+    if (panning && panning.pointerId === e.pointerId) {
+      panning = null;
+      workspace.classList.remove("panning-active");
+    }
+    if (state.drag) {
+      // 取消未完成的拖动，回滚
+      rollbackCurrentDrag();
+      renderAll();
+    }
   });
 
   // ===== 素材库 UI =====
